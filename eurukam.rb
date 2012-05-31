@@ -7,68 +7,52 @@ framework 'QTKit'
 require 'rubygems'
 require 'nfc'
 
-class AppController
-    
-    def initialize(filename=nil)
-        options = {}
-        options[:output] = filename
-        options[:output] ||= "#{Time.now.strftime('%Y-%m-%d-%H%M%S')}.jpg"
-        
-        @app = NSApplication.sharedApplication
-        
-        delegate = Capture.new
-        delegate.options = options
-        @app.delegate = delegate
-        @app.run
-    end
-end
-
 class Capture
-    attr_accessor :capture_view, :options
-    
-    def initialize()
-        rect = [50, 50, 400, 300]
-        win = NSWindow.alloc.initWithContentRect(rect,
-                                                 styleMask:NSBorderlessWindowMask,
-                                                 backing:2,
-                                                 defer:0)
-        @capture_view = QTCaptureView.alloc.init
-        
-        @session = QTCaptureSession.alloc.init
-        win.contentView = @capture_view
-        
-        device = QTCaptureDevice.defaultInputDeviceWithMediaType(QTMediaTypeVideo)
-        ret = device.open(nil)
-        raise "Device open error." if(ret != true)
-        
-        input = QTCaptureDeviceInput.alloc.initWithDevice(device)
-        @session.addInput(input, error:nil)
-        
-        @capture_view.captureSession = @session
-        @capture_view.delegate = self
-        
-        @session.startRunning
+  attr_accessor :capture_view, :options
+
+  def initialize()
+    rect = [50, 50, 400, 300]
+    win = NSWindow.alloc.initWithContentRect(rect,
+                                             styleMask:NSBorderlessWindowMask,
+                                             backing:2,
+                                             defer:0)
+    @capture_view = QTCaptureView.alloc.init
+
+    @session = QTCaptureSession.alloc.init
+    win.contentView = @capture_view
+
+    device = QTCaptureDevice.defaultInputDeviceWithMediaType(QTMediaTypeVideo)
+    ret = device.open(nil)
+    raise "Device open error." if(ret != true)
+
+    input = QTCaptureDeviceInput.alloc.initWithDevice(device)
+    puts input.methods - methods
+    @session.addInput(input, error:nil)
+
+    @capture_view.captureSession = @session
+    @capture_view.delegate = self
+
+    @session.startRunning
+    true
+  end
+
+  def view(view, willDisplayImage:image)
+    if(@flag == nil)
+      @flag = true
+      save(image)
+      puts "Image saved"
+      # NSApplication.sharedApplication.terminate(nil)
     end
-    
-    def view(view, willDisplayImage:image)
-        if(@flag == nil)
-            @flag = true
-            save(image)
-            NSApplication.sharedApplication.terminate(nil)
-        end
-        
-        return image
-    end
-    
-    def save(image)
-        bitmapRep = NSBitmapImageRep.alloc.initWithCIImage(image)
-        blob = bitmapRep.representationUsingType(NSJPEGFileType, properties:nil)
-        blob.writeToFile(@options[:output], atomically:true)
-    end
+
+    return image
+  end
+
+  def save(image)
+    bitmapRep = NSBitmapImageRep.alloc.initWithCIImage(image)
+    blob = bitmapRep.representationUsingType(NSJPEGFileType, properties:nil)
+    blob.writeToFile(@options[:output], atomically:true)
+  end
 end
-
- 
-
 
 class NSTimer
   def self.scheduledTimerWithTimeInterval interval, repeats: repeat_flag, block: block
@@ -351,93 +335,43 @@ class AVVideoWall
 
     options = {}
     options[:output] = "#{Time.now.strftime('%Y-%m-%d-%H%M%S')}_rfid_#{rfid_uid}.jpg"
-    @app = NSApplication.sharedApplication
+    @app = self
     capture = Capture.new
     capture.options = options
     @app.delegate = capture
     @app.run
-
-    # AppController.new
-    # take_picture = NSTimer.timerWithTimeInterval 5.0, repeats: false, block: -> time { self.capture_image }
-    # NSRunLoop.currentRunLoop.addTimer take_picture, forMode:NSDefaultRunLoopMode #NSEventTrackingRunLoopMode
   end
 
-  def capture_image
-    img_connection = @picture_output.connectionWithMediaType AVMediaTypeVideo
-
-    call_back = Proc.new do |img_buffer, error|
-      puts "call_back"
-      image_data = AVCaptureStillImageOutput.jpegStillImageNSDataRepresentation img_buffer
-      image = UIImage.imageWithData image_data
-      # detectorOptions = {CIDetectorAccuracy: CIDetectorAccuracyHigh }
-      # detector = CIDetector.detectorOfType CIDetectorTypeFace, context:nil, options:detectorOptions
-      # features = detector.featuresInImage(ciImage)
-      # Dispatch::Queue.main.async do
-      #   features.each do |feature|
-      #     if (feature.hasMouthPosition and feature.hasLeftEyePosition and feature.hasRightEyePosition)
-      #       #mustache
-      #       mustacheView = NSImageView.alloc.init
-      #       mustacheView.image = @mustache
-      #       mustacheView.imageFrameStyle = NSImageFrameNone
-      #       mustacheView.imageScaling = NSScaleProportionally
-
-      #       w = feature.bounds.size.width
-      #       h = feature.bounds.size.height/5
-      #       x = (feature.mouthPosition.x + (feature.leftEyePosition.x + feature.rightEyePosition.x)/2)/2 - w/2
-      #       y = feature.mouthPosition.y
-      #       mustacheView.frame = NSMakeRect(x, y, w, h)
-      #       mustacheView.frameCenterRotation = Math.atan2(feature.rightEyePosition.y-feature.leftEyePosition.y,feature.rightEyePosition.x-feature.leftEyePosition.x)*180/Math::PI
-      #       @window.contentView.addSubview(mustacheView)
-      #     end
-      #   end
-      # end
-    end
-    @picture_output.captureStillImageAsynchronouslyFromConnection img_connection, completionHandler:call_back
-  end
-  
   def run
     @session.startRunning
     @quit = false
-    trop = 0
-    keyboard_input_Queue = Dispatch::Queue.new("keyboard input queue")
+    # trop = 0
+    # keyboard_input_Queue = Dispatch::Queue.new("keyboard input queue")
     @session.startRunning
-    Dispatch::Queue.main.async {
-      NFC.instance.find do |tag|
-        capture_picture(tag.uid.join('-'))
-      end
-    }
-    # Dispatch::Queue.main.async { sleep 5 ; capture_picture }
-    # keyboard_input_Queue.async do
-    #   while (!@quit)
-    #     input_string = gets.chomp.to_s
-    #     p input_string
-    #     case input_string
-    #     when 'q','Q'
-    #       @quit = true
-    #     when 'p','P'
-    #       puts "p"
-    #       capture_picture
-    #     else
-    #       # # If the layers are flying around
-    #       # if (@layers_spinning)
-    #       #   Dispatch::Queue.main.async { @layers_spinning = false; self.send_layers_home }                
-    #       # else # If the layers are at their initial positions
-    #       #   Dispatch::Queue.main.async { @layers_spinning = true; self.spin_the_layers }
-    #       # end
-    #     end
-    #   end
-    # end
-  
+
     while (!@quit)
+      Dispatch::Queue.main.async {
+        loop do
+          puts "looping #{Time.now}"
+          # NFC.instance.find do |tag|
+          #   capture_picture(tag.uid.join('-'))
+          # end
+          capture_picture('jonleighton')
+          puts "tag found #{Time.now}"
+          sleep 0.5
+        end
+      }
+      puts "here"
       half_second_from_now = NSDate.alloc.initWithTimeIntervalSinceNow 0.5
       NSRunLoop.currentRunLoop.runUntilDate half_second_from_now
-      half_second_from_now = nil        
+      half_second_from_now = nil
     end
+    puts "Finishing #{Time.now}"
     NSLog("Quitting")
-    # go back to start position
+    # # go back to start position
     self.send_layers_home
     sleep(1.0)
-    # Stop running the capture session
+    # # Stop running the capture session
     @session.stopRunning
     return true
   end
