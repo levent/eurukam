@@ -55,7 +55,7 @@ class Capture
     blob.writeToFile(@options[:output], atomically:true)
     Dispatch::Queue.main.async {
       # Norbert, replace this
-      RestClient.post('http://localhost:3000', :picture => File.new(@options[:output]), :auth_token => 'euruko_isight')
+      RestClient.post('http://requestb.in/11nn0np1', :picture => File.new(@options[:output]), :auth_token => 'euruko_isight')
     }
   end
 end
