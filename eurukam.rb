@@ -4,8 +4,11 @@ framework 'QuartzCore'
 framework 'AVFoundation'
 framework 'Cocoa'
 framework 'QTKit'
+
 require 'rubygems'
+require 'bundler/setup'
 require 'nfc'
+require 'rest_client'
 
 class Capture
   attr_accessor :capture_view, :options
@@ -50,6 +53,10 @@ class Capture
     bitmapRep = NSBitmapImageRep.alloc.initWithCIImage(image)
     blob = bitmapRep.representationUsingType(NSJPEGFileType, properties:nil)
     blob.writeToFile(@options[:output], atomically:true)
+    Dispatch::Queue.main.async {
+      # Norbert, replace this
+      RestClient.post('http://localhost:3000', :picture => File.new(@options[:output]), :auth_token => 'euruko_isight')
+    }
   end
 end
 
