@@ -2,8 +2,95 @@
 #!/usr/local/bin/macruby
 framework 'QuartzCore'
 framework 'AVFoundation'
+framework 'Cocoa'
+framework 'QTKit'
 require 'rubygems'
 require 'nfc'
+
+class AppController
+    
+    def initialize(filename=nil)
+        options = {}
+        options[:output] = filename
+        options[:output] ||= "#{Time.now.strftime('%Y-%m-%d-%H%M%S')}.jpg"
+        
+        @app = NSApplication.sharedApplication
+        
+        delegate = Capture.new
+        delegate.options = options
+        @app.delegate = delegate
+        @app.run
+    end
+end
+
+class Capture
+    attr_accessor :capture_view, :options
+    
+    def initialize()
+        rect = [50, 50, 400, 300]
+        win = NSWindow.alloc.initWithContentRect(rect,
+                                                 styleMask:NSBorderlessWindowMask,
+                                                 backing:2,
+                                                 defer:0)
+        @capture_view = QTCaptureView.alloc.init
+        
+        @session = QTCaptureSession.alloc.init
+        win.contentView = @capture_view
+        
+        device = QTCaptureDevice.defaultInputDeviceWithMediaType(QTMediaTypeVideo)
+        ret = device.open(nil)
+        raise "Device open error." if(ret != true)
+        
+        input = QTCaptureDeviceInput.alloc.initWithDevice(device)
+        @session.addInput(input, error:nil)
+        
+        @capture_view.captureSession = @session
+        @capture_view.delegate = self
+        
+        @session.startRunning
+    end
+    
+    def view(view, willDisplayImage:image)
+        if(@flag == nil)
+            @flag = true
+            save(image)
+            NSApplication.sharedApplication.terminate(nil)
+        end
+        
+        return image
+    end
+    
+    def save(image)
+        bitmapRep = NSBitmapImageRep.alloc.initWithCIImage(image)
+        blob = bitmapRep.representationUsingType(NSJPEGFileType, properties:nil)
+        blob.writeToFile(@options[:output], atomically:true)
+    end
+end
+
+ 
+
+
+class NSTimer
+  def self.scheduledTimerWithTimeInterval interval, repeats: repeat_flag, block: block
+    self.scheduledTimerWithTimeInterval interval, 
+      target: self, 
+      selector: 'executeBlockFromTimer:', 
+      userInfo: block, 
+      repeats: repeat_flag
+  end
+  def self.timerWithTimeInterval interval, repeats: repeat_flag, block: block
+    self.timerWithTimeInterval interval, 
+      target: self, 
+      selector: 'executeBlockFromTimer:', 
+      userInfo: block, 
+      repeats: repeat_flag
+  end
+  def self.executeBlockFromTimer aTimer
+    blck = aTimer.userInfo
+    time = aTimer.timeInterval
+    blck[time] if blck
+  end
+end
 
 class NSColor 
   def toCGColor
@@ -98,6 +185,22 @@ class AVVideoWall
     frame_wanted.size.height -= 4
     
     return frame_wanted
+  end
+
+  def capture_session_setup
+    @captureSession = AVCaptureSession.new
+    @captureSession.sessionPreset = AVCaptureSessionPresetPhoto
+    
+    # looking for Video device, if found add into the session
+    videoDevice = AVCaptureDevice.defaultDeviceWithMediaType AVMediaTypeVideo
+    videoDevice.lockForConfiguration nil
+    if videoDevice 
+      NSLog("got videoDevice")
+      videoInput = AVCaptureDeviceInput.deviceInputWithDevice videoDevice, error:nil
+      @captureSession.addInput videoInput if (@captureSession.canAddInput videoInput)
+      return true
+    end
+    false
   end
 
   # Create 4 video preview layers per video device in a mirrored square, and
@@ -221,8 +324,64 @@ class AVVideoWall
     @session = AVCaptureSession.alloc.init
     # Set the session preset
     @session.setSessionPreset AVCaptureSessionPreset640x480
+
+    # still image output setup
+    @picture_output = AVCaptureStillImageOutput.new
+    output_settings = {AVVideoCodecKey => AVVideoCodecJPEG}
+    @picture_output.outputSettings = output_settings
+    puts "Session can add output: #{@session.canAddOutput @picture_output}"
+    @session.addOutput @picture_output if (@session.canAddOutput @picture_output)
+
     # Create a wall of video out of the video capture devices on your Mac
     success = self.setup_video_wall
+  end
+
+  def connectionWithMediaType mediaType, fromConnections:connections
+    connections.each do |connection|
+      connection.inputPorts.each do |port|
+        return connection if port.mediaType == mediaType
+      end
+    end
+    nil
+  end
+
+  def capture_picture
+    AppController.new
+    # take_picture = NSTimer.timerWithTimeInterval 5.0, repeats: false, block: -> time { self.capture_image }
+    # NSRunLoop.currentRunLoop.addTimer take_picture, forMode:NSDefaultRunLoopMode #NSEventTrackingRunLoopMode
+  end
+
+  def capture_image
+    img_connection = @picture_output.connectionWithMediaType AVMediaTypeVideo
+
+    call_back = Proc.new do |img_buffer, error|
+      puts "call_back"
+      image_data = AVCaptureStillImageOutput.jpegStillImageNSDataRepresentation img_buffer
+      image = UIImage.imageWithData image_data
+      # detectorOptions = {CIDetectorAccuracy: CIDetectorAccuracyHigh }
+      # detector = CIDetector.detectorOfType CIDetectorTypeFace, context:nil, options:detectorOptions
+      # features = detector.featuresInImage(ciImage)
+      # Dispatch::Queue.main.async do
+      #   features.each do |feature|
+      #     if (feature.hasMouthPosition and feature.hasLeftEyePosition and feature.hasRightEyePosition)
+      #       #mustache
+      #       mustacheView = NSImageView.alloc.init
+      #       mustacheView.image = @mustache
+      #       mustacheView.imageFrameStyle = NSImageFrameNone
+      #       mustacheView.imageScaling = NSScaleProportionally
+
+      #       w = feature.bounds.size.width
+      #       h = feature.bounds.size.height/5
+      #       x = (feature.mouthPosition.x + (feature.leftEyePosition.x + feature.rightEyePosition.x)/2)/2 - w/2
+      #       y = feature.mouthPosition.y
+      #       mustacheView.frame = NSMakeRect(x, y, w, h)
+      #       mustacheView.frameCenterRotation = Math.atan2(feature.rightEyePosition.y-feature.leftEyePosition.y,feature.rightEyePosition.x-feature.leftEyePosition.x)*180/Math::PI
+      #       @window.contentView.addSubview(mustacheView)
+      #     end
+      #   end
+      # end
+    end
+    @picture_output.captureStillImageAsynchronouslyFromConnection img_connection, completionHandler:call_back
   end
   
   def run
@@ -231,19 +390,25 @@ class AVVideoWall
     trop = 0
     keyboard_input_Queue = Dispatch::Queue.new("keyboard input queue")
     @session.startRunning
-    keyboard_input_Queue.async do        
+    sleep 5
+        capture_picture
+    keyboard_input_Queue.async do
       while (!@quit)
         input_string = gets.chomp.to_s
+        p input_string
         case input_string
         when 'q','Q'
           @quit = true
+        when 'p','P'
+          puts "p"
+          capture_picture
         else
-          # If the layers are flying around
-          if (@layers_spinning)
-            Dispatch::Queue.main.async { @layers_spinning = false; self.send_layers_home }                
-          else # If the layers are at their initial positions
-            Dispatch::Queue.main.async { @layers_spinning = true; self.spin_the_layers }
-          end
+          # # If the layers are flying around
+          # if (@layers_spinning)
+          #   Dispatch::Queue.main.async { @layers_spinning = false; self.send_layers_home }                
+          # else # If the layers are at their initial positions
+          #   Dispatch::Queue.main.async { @layers_spinning = true; self.spin_the_layers }
+          # end
         end
       end
     end
