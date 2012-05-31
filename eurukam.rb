@@ -345,11 +345,12 @@ class AVVideoWall
     nil
   end
 
-  def capture_picture
+  def capture_picture(rfid_uid)
+    sleep 5
     NSSound.soundNamed('Glass').play
 
     options = {}
-    options[:output] = "#{Time.now.strftime('%Y-%m-%d-%H%M%S')}.jpg"
+    options[:output] = "#{Time.now.strftime('%Y-%m-%d-%H%M%S')}_rfid_#{rfid_uid}.jpg"
     @app = NSApplication.sharedApplication
     capture = Capture.new
     capture.options = options
@@ -400,27 +401,32 @@ class AVVideoWall
     trop = 0
     keyboard_input_Queue = Dispatch::Queue.new("keyboard input queue")
     @session.startRunning
-    Dispatch::Queue.main.async { sleep 5 ; capture_picture }
-    keyboard_input_Queue.async do
-      while (!@quit)
-        input_string = gets.chomp.to_s
-        p input_string
-        case input_string
-        when 'q','Q'
-          @quit = true
-        when 'p','P'
-          puts "p"
-          capture_picture
-        else
-          # # If the layers are flying around
-          # if (@layers_spinning)
-          #   Dispatch::Queue.main.async { @layers_spinning = false; self.send_layers_home }                
-          # else # If the layers are at their initial positions
-          #   Dispatch::Queue.main.async { @layers_spinning = true; self.spin_the_layers }
-          # end
-        end
+    Dispatch::Queue.main.async {
+      NFC.instance.find do |tag|
+        capture_picture(tag.uid.join('-'))
       end
-    end
+    }
+    # Dispatch::Queue.main.async { sleep 5 ; capture_picture }
+    # keyboard_input_Queue.async do
+    #   while (!@quit)
+    #     input_string = gets.chomp.to_s
+    #     p input_string
+    #     case input_string
+    #     when 'q','Q'
+    #       @quit = true
+    #     when 'p','P'
+    #       puts "p"
+    #       capture_picture
+    #     else
+    #       # # If the layers are flying around
+    #       # if (@layers_spinning)
+    #       #   Dispatch::Queue.main.async { @layers_spinning = false; self.send_layers_home }                
+    #       # else # If the layers are at their initial positions
+    #       #   Dispatch::Queue.main.async { @layers_spinning = true; self.spin_the_layers }
+    #       # end
+    #     end
+    #   end
+    # end
   
     while (!@quit)
       half_second_from_now = NSDate.alloc.initWithTimeIntervalSinceNow 0.5
