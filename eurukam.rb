@@ -338,9 +338,14 @@ class EurukoVideo
       Dispatch::Queue.main.async {
         loop do
           puts "looping #{Time.now}"
+
+          # Norbert, uncomment this
           # NFC.instance.find do |tag|
+          #   TODO: get the uid in proper format
           #   capture_picture(tag.uid.join('-'))
           # end
+          #
+          # Norbert, comment this
           capture_picture('euruko')
           puts "tag found #{Time.now}"
           sleep 0.5
