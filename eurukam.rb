@@ -390,8 +390,7 @@ class AVVideoWall
     trop = 0
     keyboard_input_Queue = Dispatch::Queue.new("keyboard input queue")
     @session.startRunning
-    sleep 5
-        capture_picture
+    Dispatch::Queue.main.async { sleep 5 ; capture_picture }
     keyboard_input_Queue.async do
       while (!@quit)
         input_string = gets.chomp.to_s
