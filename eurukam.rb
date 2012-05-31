@@ -53,9 +53,10 @@ class Capture
     bitmapRep = NSBitmapImageRep.alloc.initWithCIImage(image)
     blob = bitmapRep.representationUsingType(NSJPEGFileType, properties:nil)
     blob.writeToFile(@options[:output], atomically:true)
+    # Norbert, not sure if this needs to be async
     Dispatch::Queue.main.async {
       # Norbert, replace this
-      RestClient.post('http://requestb.in/11nn0np1', :picture => File.new(@options[:output]), :auth_token => 'euruko_isight')
+      RestClient.post('http://requestb.in/11nn0np1', :picture => File.new(@options[:output]), :auth_token => 'euruko_isight', :rfid => @options[:rfid], :filename => @options[:output])
     }
   end
 end
@@ -313,8 +314,9 @@ class EurukoVideo
     nil
   end
 
-  def capture_picture(rfid_uid)
+  def capture_picture(rfid_uid, rfid_array)
     puts "capture_picture #{Time.now}"
+    # Norbert consider changing sleep as NFC will block and only call this on tag
     sleep 5
     CATransaction.begin
       CATransaction.setValue 0.5, forKey: 'animationDuration'
@@ -327,6 +329,8 @@ class EurukoVideo
 
     options = {}
     options[:output] = "#{Time.now.strftime('%Y-%m-%d-%H%M%S')}_rfid_#{rfid_uid}.jpg"
+    # Norbert do what you will with this
+    options[:rfid] = rfid_array.join('-')
     @app = self
     capture = Capture.new
     capture.options = options
@@ -349,11 +353,12 @@ class EurukoVideo
           # Norbert, uncomment this
           # NFC.instance.find do |tag|
           #   TODO: get the uid in proper format
-          #   capture_picture(tag.uid.join('-'))
+          #   capture_picture(tag.uid.join('-'), tag.uid)
           # end
           #
           # Norbert, comment this
-          capture_picture('euruko')
+          fake_rfid = [123, 233, 32, 31]
+          capture_picture('euruko', fake_rfid)
           puts "tag found #{Time.now}"
           sleep 0.5
         end
