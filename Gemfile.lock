@@ -1,0 +1,10 @@
+GEM
+  remote: http://rubygems.org/
+  specs:
+    nfc (2.1.0)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  nfc
