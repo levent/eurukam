@@ -53,29 +53,7 @@ class Capture
   end
 end
 
-class NSTimer
-  def self.scheduledTimerWithTimeInterval interval, repeats: repeat_flag, block: block
-    self.scheduledTimerWithTimeInterval interval, 
-      target: self, 
-      selector: 'executeBlockFromTimer:', 
-      userInfo: block, 
-      repeats: repeat_flag
-  end
-  def self.timerWithTimeInterval interval, repeats: repeat_flag, block: block
-    self.timerWithTimeInterval interval, 
-      target: self, 
-      selector: 'executeBlockFromTimer:', 
-      userInfo: block, 
-      repeats: repeat_flag
-  end
-  def self.executeBlockFromTimer aTimer
-    blck = aTimer.userInfo
-    time = aTimer.timeInterval
-    blck[time] if blck
-  end
-end
-
-class NSColor 
+class NSColor
   def toCGColor
     # approach #2
     components = [redComponent, greenComponent, blueComponent, alphaComponent]
@@ -92,7 +70,7 @@ class AVCaptureInput
   end
 end
 
-class AVVideoWall
+class EurukoVideo
   RAND_MAX = 2147483647
   attr_accessor :window, :root_layer, :session, :video_preview_layers, :home_layer_rects, :spinningLayers
   
@@ -388,7 +366,7 @@ success = false
 
 # In a command line applicaton, NSApplicationLoad is required to get an NSWindow to become key and forefront.
 NSApplicationLoad()
-wall = AVVideoWall.new
+wall = EurukoVideo.new
 success = wall.configure
 if success
   success = wall.run
