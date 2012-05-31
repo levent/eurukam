@@ -330,6 +330,7 @@ class AVVideoWall
   end
 
   def capture_picture(rfid_uid)
+    puts "capture_picture #{Time.now}"
     sleep 5
     NSSound.soundNamed('Glass').play
 
