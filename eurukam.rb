@@ -346,6 +346,7 @@ class AVVideoWall
   end
 
   def capture_picture
+    NSSound.soundNamed('Glass').play
     AppController.new
     # take_picture = NSTimer.timerWithTimeInterval 5.0, repeats: false, block: -> time { self.capture_image }
     # NSRunLoop.currentRunLoop.addTimer take_picture, forMode:NSDefaultRunLoopMode #NSEventTrackingRunLoopMode
