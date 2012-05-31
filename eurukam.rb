@@ -26,7 +26,6 @@ class Capture
     raise "Device open error." if(ret != true)
 
     input = QTCaptureDeviceInput.alloc.initWithDevice(device)
-    puts input.methods - methods
     @session.addInput(input, error:nil)
 
     @capture_view.captureSession = @session
@@ -332,7 +331,14 @@ class AVVideoWall
   def capture_picture(rfid_uid)
     puts "capture_picture #{Time.now}"
     sleep 5
-    NSSound.soundNamed('Glass').play
+    CATransaction.begin
+      CATransaction.setValue 0.5, forKey: 'animationDuration'
+      # fade it out
+      fadeAnimation = CABasicAnimation.animationWithKeyPath "opacity"
+      fadeAnimation.toValue = 0.2
+      fadeAnimation.timingFunction = CAMediaTimingFunction.functionWithName('easeIn') 
+      @root_layer.addAnimation fadeAnimation, forKey:"fadeAnimation"
+    CATransaction.commit
 
     options = {}
     options[:output] = "#{Time.now.strftime('%Y-%m-%d-%H%M%S')}_rfid_#{rfid_uid}.jpg"
