@@ -363,7 +363,7 @@ class AVVideoWall
           # NFC.instance.find do |tag|
           #   capture_picture(tag.uid.join('-'))
           # end
-          capture_picture('jonleighton')
+          capture_picture('euruko')
           puts "tag found #{Time.now}"
           sleep 0.5
         end
